@@ -1,4 +1,4 @@
 mage_utilities
 ==============
 
-Python scripts for working with magento database
+Python scripts used to work with Magento's database.
