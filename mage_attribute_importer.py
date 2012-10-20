@@ -2,10 +2,7 @@
 
 ################################################################################
 ## NAME: MAGENTO ATTRIBUTE IMPORTER - Version 0.0.1
-## DATE: Feb 2012
 ## AUTHOR: Jason R Alexander
-## MAIL: JasonAlexander@zumiez.com
-## SITE: http://www.zumiez.com
 ## INFO: This script will import magento product attributes using a confi file and a source csv file. 
 #################################################################################
 
