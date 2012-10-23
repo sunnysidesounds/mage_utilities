@@ -182,18 +182,20 @@ class mageAttributeImporter(object):
 			attribute_value = row[attribute_id_column]
 			#Going to check to see if the product has a attribute, kind of an unneccessary action?, But it weeds out csv crap
 			check_attribute = self.dbCheckAttributeValue(entity_id, attribute_id)
-			if(check_attribute):
-				#Let's replace it!
+			
+			#Let's replace it!
+			if(count != 1):
 				replace = self.dbReplaceAttribute(entity_id, attribute_id, attribute_value)
 				time.sleep(0.01) #This fixes a oursql persistent connection bug??
 				print str(count) + ") " + replace
-				count = count + 1
+				
 				if count in self.spotCheckList:
 					self.log("spot check on entity_id: " + str(entity_id) + " count is: " + str(count) + " OK!")	
 
 			else:
 				self.log('No attribute value for ' + str(entity_id) + ' value: ' + str(check_attribute))
 
+			count = count + 1
 
 
 if __name__ == '__main__':
