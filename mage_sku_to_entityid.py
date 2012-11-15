@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 ################################################################################
-## NAME: MAGENTO ATTRIBUTE IMPORTER - Version 0.0.1
+## NAME: MAGENTO SKU TO ENTITY_ID CONVERTER - Version 0.0.1
 ## AUTHOR: Jason R Alexander
-## INFO: This script will import magento product attributes using a config file and a source csv file. 
+## INFO: This script will take a csv file with sku and map out their entity_ids in a new csv file
 #################################################################################
 
 import sys
@@ -22,14 +22,15 @@ import ast
 import resource
 
 
-class mageAttributeImporter(object):
-	""" This import Magento attribute values from a csv file"""
+
+
+class mageSkuToEntityId(object):
+	"""Convert Sku's into Entity_ids """
 	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
 	def __init__(self, config_file):
 		#Get the name of the script
 		self.appName = str(os.path.splitext(os.path.basename(__file__))[0])
 		#Let's spot check out replace progress
-		self.spotCheckList = [100, 500, 800, 1000, 2500, 5000, 7500, 10000, 12500, 15000, 20000, 20500, 21000]
 		#Check for required config file
 		check_file_path = os.path.exists(config_file)
 		if(check_file_path):    
@@ -48,39 +49,34 @@ class mageAttributeImporter(object):
 					self.dbUsername = configValues[1]
 				if(configValues[0] == 'CSVREAD'):
 					self.csvFile = configValues[1]
-				if(configValues[0] == 'DRYRUN'):
-					self.dryRun = configValues[1]
-				if(configValues[0] == 'ATTRIBUTEID'):
-					self.attributeId = configValues[1]
-				if(configValues[0] == 'CSVENTITYCOLUMN'):
-					self.entityIdColumn = configValues[1]
+				if(configValues[0] == 'CSVWRITE'):
+					self.csvFileWrite = configValues[1]
+				if(configValues[0] == 'CSVSKUCOLUMN'):
+					self.entitySkuColumn = configValues[1]
 				if(configValues[0] == 'CSVATTRIBUTECOLUMN'):
 					self.attributeIdColumn = configValues[1]
 				if(configValues[0] == 'EMAIL'):
 					self.email = configValues[1]
 				if(configValues[0] == 'LOG'):
 					self.logFile = configValues[1]
-					#Let's delete the old file
+					#Let's remove old log and csv files at the end here. 
 					self.removeOldFile(self.logFile)
-				#if(configValues[0][0] == '#'):
-					#self.log(configValues[0])
-
+					self.removeOldFile(self.csvFileWrite)
 
 		else:
-			sys.exit('mageAttributeImporter -- ERROR: Please provide configuration file!!')
+			sys.exit('mageSkuToEntityId -- ERROR: Please provide configuration file!!')
 
+	    
 	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
 	def scriptInfo(self):
 		"""This just displays script information """
 		memory_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 		self.log("The script " + str(self.appName) + " was ran at " + str(datetime.datetime.now()))
 		self.log("Script ran on host: " + str(self.dbHost1))
-		self.log("Updating attribute_id: " + str(self.attributeId))
 		self.log("Using csv file: " + str(self.csvFile))
+		self.log("Using write csv file: " + str(self.csvFileWrite))
 		self.log("Using log file: " + str(self.logFile))
-		self.log("Dry-run status: " + str(self.dryRun))
 		self.log("Script memory usage: "+ str(memory_usage) +"kb")
-
 
 
 	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
@@ -96,34 +92,6 @@ class mageAttributeImporter(object):
 		curs = conn.cursor(try_plain_query=False)
 
 		return curs
-
-	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
-	def dbCheckAttributeValue(self, entity_id, attribute_id):
-		"""This check the attribute value """
-		cursor = self.dbConnect()
-		query = 'SELECT value FROM catalog_product_entity_varchar WHERE entity_id = '+entity_id+' AND attribute_id = '+attribute_id+' AND entity_type_id = 4'
-		try:
-			cursor.execute(query, plain_query=False)
-			data = cursor.fetchall()
-
-			for value in data:
-				return value[0]
-		except:
-			return False
-
-	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
-	def dbReplaceAttribute(self, entity_id, attribute_id, attribute_value):
-		"""Replace the value in the db """
-		cursor = self.dbConnect()
-		query = 'REPLACE INTO catalog_product_entity_varchar (entity_type_id, attribute_id, store_id, entity_id, value) VALUES (4, '+attribute_id+', 0, '+entity_id+', "'+attribute_value+'")'
-
-		if(self.dryRun == 'true'):
-			return "[DRY-RUN] Query running: " + query
-		else:
-			cursor.execute(query, plain_query=False)
-			cursor.close()
-			return "Query running: " + query
-
 
 	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
 	def log(self, message):
@@ -155,7 +123,7 @@ class mageAttributeImporter(object):
 		message = "FILE: " + filepath + reponse
 		self.log(message)
 		print message
-	
+
 	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
 	def emailLog(self):
 		"""This uses bash to email log """
@@ -165,36 +133,41 @@ class mageAttributeImporter(object):
 		print "Email sent to: " + self.email
 		self.log("Email sent to: " + self.email)
 
+	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
+	def dbGetEntityId(self, sku):
+		"""This gets entity_id with provided sku """
+		cursor = self.dbConnect()
+		query = "SELECT entity_id FROM catalog_product_entity WHERE sku = '"+str(sku)+ "'"
+		cursor.execute(query, plain_query=False)
+		for value in cursor:
+			return value[0]
+
+	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
+	def csvWrite(self, row, writefile):
+		"""This writes to csv file """
+		errorWriter = csv.writer(open(writefile, 'a'), quoting=csv.QUOTE_ALL)				
+		errorWriter.writerow(row)
 
 	# --------------------------------------------------------------------------------------------------------------------------------------------------------------- #
 	def processFile(self):
 		self.log('Processing csv file...')
 		#Get config Values
-		entity_id_column = int(self.entityIdColumn)
+		sku_column = int(self.entitySkuColumn)
 		attribute_id_column = int(self.attributeIdColumn)
-		attribute_id = str(self.attributeId)
+		
 		#Let's read the csv file
 		reader = csv.reader(open(self.csvFile, "rb"))
 		count = 1
 		for row in reader:
-			#Let's get the column values for the csv file
-			entity_id = row[entity_id_column]
+			sku = row[sku_column]
 			attribute_value = row[attribute_id_column]
-			#Going to check to see if the product has a attribute, kind of an unneccessary action?, But it weeds out csv crap
-			check_attribute = self.dbCheckAttributeValue(entity_id, attribute_id)
-			
-			#Let's replace it!
-			if(count != 1):
-				replace = self.dbReplaceAttribute(entity_id, attribute_id, attribute_value)
-				time.sleep(0.01) #This fixes a oursql persistent connection bug??
-				print str(count) + ") " + replace
-				
-				if count in self.spotCheckList:
-					self.log("spot check on entity_id: " + str(entity_id) + " count is: " + str(count) + " OK!")	
 
-			else:
-				self.log('No attribute value for ' + str(entity_id) + ' value: ' + str(check_attribute))
+			entity_id = self.dbGetEntityId(sku)
 
+			if(entity_id != None):
+				print 'SKU: ' + str(sku) + ' ENTITY_ID: ' + str(entity_id) + ' ATTRIBUTE_VALUE: ' + str(attribute_value)
+				self.csvWrite([sku, entity_id, attribute_value], self.csvFileWrite)
+							
 			count = count + 1
 
 
@@ -202,29 +175,27 @@ if __name__ == '__main__':
 
 	#If arguments aren't passed show error message
 	if len(sys.argv)<2:
-		#print generateHeader()
-		sys.exit('mageAttributeImporter -- ERROR: Please provide configuration file!!')
+		sys.exit('mageSkuToEntityId -- ERROR: Please provide configuration file!!')
 	else:
 		
 		start_script = datetime.datetime.now()
 		#Get the config file from the first argument passed to the script.
 		config_file = str(sys.argv[1])
 		#Load the config file into the class object and initiate. 
-		mai = mageAttributeImporter(config_file)
-		mai.scriptInfo()
+		mste = mageSkuToEntityId(config_file)
+		mste.scriptInfo()
+
+		mste.csvWrite(['sku', 'entity_id', 'attribute_value'], mste.csvFileWrite)
 
 		#Let's process all values from the config file.
-		run_script = mai.processFile()
+		run_script = mste.processFile()
 		end_script = datetime.datetime.now()
 		script_time_taken = end_script - start_script
 		print "Script time: " + str(script_time_taken)
 
-		mai.log("Script time: " + str(script_time_taken))
-		mai.log('Processing csv file completed')
-		mai.emailLog()
-
-
-
+		mste.log("Script time: " + str(script_time_taken))
+		mste.log('Processing csv file completed')
+		mste.emailLog()
 
 
 
