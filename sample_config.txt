@@ -3,14 +3,17 @@ HOST:<host>
 DATABASE:<database>
 USERNAME:<user>
 PASSWORD:<password>
-CSV:<csv_file>
+CSVREAD:<csv_read_file>
+CSVWRITE:<csv_write_file>
 LOG:<log_file
 # Enable/disable dry-run status (If set true is just prints the queries)
 DRYRUN:<true_false>
 # The attribute id value from eav_attributes
 ATTRIBUTEID:<attribute_id>
-# This is the column in the csv file that holds all entity_ids
+# This is the column in the csv file that holds all entity_ids (For mage_attribute_importer)
 CSVENTITYCOLUMN:<entity_column>
-# This is the column in the csv file that hold the desired attribute_ids
+# This is the column in the csv file that holds all sku (For mage_sku_to_entityid)
+CSVSKUCOLUMN:<column_id>
+# This is the column in the csv file that hold the desired attribute_ids (For mage_sku_to_entityid & mage_attribute_importer)
 CSVATTRIBUTECOLUMN:<attribute_column>
 EMAIL:<email>
