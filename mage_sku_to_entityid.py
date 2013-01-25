@@ -165,6 +165,7 @@ class mageSkuToEntityId(object):
 			entity_id = self.dbGetEntityId(sku)
 
 			if(entity_id != None):
+				time.sleep(0.01) #This fixes a oursql persistent connection bug??
 				print 'SKU: ' + str(sku) + ' ENTITY_ID: ' + str(entity_id) + ' ATTRIBUTE_VALUE: ' + str(attribute_value)
 				self.csvWrite([sku, entity_id, attribute_value], self.csvFileWrite)
 							
