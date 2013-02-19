@@ -17,3 +17,6 @@ CSVSKUCOLUMN:<column_id>
 # This is the column in the csv file that hold the desired attribute_ids (For mage_sku_to_entityid & mage_attribute_importer)
 CSVATTRIBUTECOLUMN:<attribute_column>
 EMAIL:<email>
+# COMPARE TWO CSV FILES (For mage_table_diff)
+COMPARE_CSV_ONE:<path_to_csv>
+COMPARE_CSV_TWO:<path_to_csv>
